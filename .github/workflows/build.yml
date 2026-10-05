@@ -1,0 +1,48 @@
+name: Build Windows prototype
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Godot 4.4.1 and release template
+        run: |
+          curl -fL --retry 3 -o godot.zip https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+          unzip -q godot.zip -d /tmp/godot
+          chmod +x /tmp/godot/*
+          echo /tmp/godot >> "$GITHUB_PATH"
+          curl -fL --retry 3 -o templates.tpz https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz
+          unzip -q templates.tpz templates/windows_release_x86_64.exe -d /tmp
+          mkdir -p ~/.local/share/godot/export_templates/4.4.1.stable
+          pip install Pillow==11.3.0 lief==1.0.0
+          python build_tools/patch_icon.py /tmp/templates/windows_release_x86_64.exe ~/.local/share/godot/export_templates/4.4.1.stable/windows_release_x86_64.exe
+          rm godot.zip templates.tpz
+      - name: Import and test
+        run: |
+          Godot_v4.4.1-stable_linux.x86_64 --headless --path project --editor --import
+          Godot_v4.4.1-stable_linux.x86_64 --headless --path project -- --test "$PWD/docs/test_report.json"
+      - name: Export and package
+        run: |
+          Godot_v4.4.1-stable_linux.x86_64 --headless --path project --export-release "Windows Desktop"
+          python build_tools/package.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GTA-Tiraspol-Windows
+          path: release/*
+      - name: Publish prototype release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.1.0 >/dev/null 2>&1; then
+            gh release upload v0.1.0 release/* --clobber
+          else
+            gh release create v0.1.0 release/* --target "$GITHUB_SHA" --title "GTA Tiraspol v0.1 — Балка" --prerelease --notes "Первый Windows-прототип: ходьба, вождение, карта района Балка. Распакуйте весь ZIP и запустите GTA_Tiraspol.exe. Для ярлыка с Touareg запустите Create_Desktop_Shortcut.vbs. Инструкция и исходники включены."
+          fi

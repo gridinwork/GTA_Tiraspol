@@ -2,6 +2,8 @@
 
 Независимый 3D-прототип прогулок и вождения по району Балка в Тирасполе. Godot 4.4.1, рендерер Compatibility, русский интерфейс. Проект не связан с Rockstar Games или Volkswagen; оригинальные ресурсы GTA не используются.
 
+![Игровой кадр прототипа](docs/preview.png)
+
 ## Запуск Windows 10/11 x64
 
 1. Скачайте `GTA_Tiraspol_Windows_v0.1.0.zip` из [Releases](https://github.com/gridinwork/GTA_Tiraspol/releases).

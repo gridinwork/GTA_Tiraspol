@@ -1,0 +1,112 @@
+{
+  "checks": [
+    {
+      "check": "409 real building footprints loaded",
+      "pass": true
+    },
+    {
+      "check": "276 real street/path sections loaded",
+      "pass": true
+    },
+    {
+      "check": "Starting vehicle is inside selected boundary",
+      "pass": true
+    },
+    {
+      "check": "Batched building collision shapes exist",
+      "pass": true
+    },
+    {
+      "check": "Character settles onto the ground",
+      "pass": true
+    },
+    {
+      "check": "Walking changes the character's position",
+      "pass": true
+    },
+    {
+      "check": "Enter vehicle hides and disables walking character",
+      "pass": true
+    },
+    {
+      "check": "Vehicle accelerates above 20 km/h",
+      "pass": true
+    },
+    {
+      "check": "Driving moves across the map",
+      "pass": true
+    },
+    {
+      "check": "Exit is prevented while moving quickly",
+      "pass": true
+    },
+    {
+      "check": "Steering and handbrake change vehicle heading",
+      "pass": true
+    },
+    {
+      "check": "Camera 0 has a finite transform",
+      "pass": true
+    },
+    {
+      "check": "Camera 1 has a finite transform",
+      "pass": true
+    },
+    {
+      "check": "Camera 2 has a finite transform",
+      "pass": true
+    },
+    {
+      "check": "Camera 3 has a finite transform",
+      "pass": true
+    },
+    {
+      "check": "Camera 4 has a finite transform",
+      "pass": true
+    },
+    {
+      "check": "Cockpit and external cameras use different locations",
+      "pass": true
+    },
+    {
+      "check": "Stopped vehicle permits a safe exit",
+      "pass": true
+    },
+    {
+      "check": "Character remains grounded after exit",
+      "pass": true
+    },
+    {
+      "check": "Vehicle shape collides with an actual building wall",
+      "pass": true
+    },
+    {
+      "check": "Save/load restores vehicle position and driving state",
+      "pass": true
+    },
+    {
+      "check": "Reset puts the car on a road inside the map",
+      "pass": true
+    },
+    {
+      "check": "Pause opens menu and stops simulation",
+      "pass": true
+    },
+    {
+      "check": "Resume returns to the game",
+      "pass": true
+    },
+    {
+      "check": "Map opens and pauses game",
+      "pass": true
+    },
+    {
+      "check": "Closing map resumes game",
+      "pass": true
+    }
+  ],
+  "engine": "4.4.1-stable (official)",
+  "failures": [],
+  "note": "Automated functional checks; not a Windows or UHD 620 benchmark.",
+  "platform": "Linux"
+}
