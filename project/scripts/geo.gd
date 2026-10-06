@@ -103,6 +103,7 @@ static func merge_static_children(parent:Node3D) -> void:
         if not n is MeshInstance3D or not n.material_override:continue
         var key=n.material_override.get_instance_id()
         if not groups.has(key):groups[key]={"surface":surface(),"material":n.material_override}
-        groups[key].surface.append_from(n.mesh,0,n.transform)
+        var part=SurfaceTool.new();part.create_from(n.mesh,0);part.deindex()
+        groups[key].surface.append_from(part.commit(),0,n.transform)
         parent.remove_child(n);n.queue_free()
     for group in groups.values():mesh_node(parent,group.surface,group.material)

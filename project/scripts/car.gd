@@ -28,7 +28,7 @@ var test_control = false
 func _ready() -> void:
     name="Touareg"
     collision_layer=2
-    collision_mask=1
+    collision_mask=25
     floor_snap_length=0.4
     var c=CollisionShape3D.new();var sh=BoxShape3D.new();sh.size=Vector3(1.96,1.84,4.65);c.shape=sh;c.position=Vector3(0,.94,0);add_child(c)
     visual=Node3D.new();add_child(visual)
@@ -39,27 +39,41 @@ func _ready() -> void:
     horn=AudioStreamPlayer.new();horn.stream=load("res://assets/horn.wav");horn.volume_db=-15;add_child(horn)
 
 func _loft(sections: Array, material: Material) -> MeshInstance3D:
-    var s=G.surface()
+    var fine=[]
     for i in range(sections.size()-1):
-        var a=sections[i];var b=sections[i+1]
-        # z, lower half width, upper half width, bottom, top
-        var av=_body_ring(a);var bv=_body_ring(b)
-        for j in range(8):
-            var k=(j+1)%8;var normal=(av[k]-av[j]).cross(bv[j]-av[j]).normalized()
+        var a=sections[maxi(0,i-1)];var b=sections[i];var c=sections[i+1];var d=sections[mini(sections.size()-1,i+2)]
+        for k in range(6):
+            var t=k/6.0;var row=[]
+            for n in range(5):
+                var v=.5*((2*b[n])+(-a[n]+c[n])*t+(2*a[n]-5*b[n]+4*c[n]-d[n])*t*t+(-a[n]+3*b[n]-3*c[n]+d[n])*t*t*t)
+                row.append(clampf(v,minf(b[n],c[n])-.025,maxf(b[n],c[n])+.025))
+            fine.append(row)
+    fine.append(sections[-1])
+    var s=G.surface()
+    for i in range(fine.size()-1):
+        var av=_body_ring(fine[i]);var bv=_body_ring(fine[i+1])
+        for j in range(24):
+            var k=(j+1)%24;var normal=(av[k]-av[j]).cross(bv[j]-av[j]).normalized()
             G.quad(s,av[j],av[k],bv[k],bv[j],normal)
-        for j in range(1,7):
+        for j in range(1,23):
             if i==0:G.tri(s,av[0],av[j+1],av[j],Vector3.FORWARD)
-            if i==sections.size()-2:G.tri(s,bv[0],bv[j],bv[j+1],Vector3.BACK)
+            if i==fine.size()-2:G.tri(s,bv[0],bv[j],bv[j+1],Vector3.BACK)
+    s.generate_normals()
     return G.mesh_node(visual,s,material)
 
 func _body_ring(a:Array) -> Array:
-    var z=float(a[0]);var lo=float(a[1]);var hi=float(a[2]);var bottom=float(a[3]);var top=float(a[4]);var bevel=minf(.12,(top-bottom)*.2)
-    return [Vector3(-lo+.09,bottom,z),Vector3(lo-.09,bottom,z),Vector3(lo,bottom+bevel,z),Vector3(hi,top-bevel,z),Vector3(hi-.08,top,z),Vector3(-hi+.08,top,z),Vector3(-hi,top-bevel,z),Vector3(-lo,bottom+bevel,z)]
+    var result=[]
+    for i in range(24):
+        var angle=-PI+TAU*i/24;var v=sin(angle);var u=cos(angle)
+        var y=(a[3]+a[4])/2+signf(v)*pow(absf(v),.40)*(a[4]-a[3])/2
+        var half=lerpf(a[1],a[2],(y-a[3])/maxf(.01,a[4]-a[3]))
+        result.append(Vector3(signf(u)*pow(absf(u),.32)*half,y,a[0]))
+    return result
 
 func _model() -> void:
     var paint=G.mat(Color("101820"),.28);paint.metallic=.65
     var trim=G.mat(Color("080d10"),.78)
-    var glass=G.mat(Color("416575"),.22);glass.metallic=.45
+    var glass=G.mat(Color("416575"),.22);glass.metallic=.15;glass.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;glass.albedo_color.a=.48;glass.set_meta("glass",true)
     var chrome=G.mat(Color("aebfc7"),.23);chrome.metallic=.85
     var tyre=G.mat(Color("181b1c"),.95)
     var head=G.mat(Color("dae9e5"),.15);head.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -94,13 +108,18 @@ func _model() -> void:
     for y in [.88,.97,1.06,1.15]:G.box(visual,Vector3(0,y,-2.411),Vector3(.84,.023,.016),chrome)
     var badge=G.cylinder(visual,Vector3(0,1.08,-2.43),.095,.02,chrome,16);badge.rotation.x=PI/2
     for side in [-1,1]:
-        var h=G.ball(visual,Vector3(side*.66,1.11,-2.245),.205,head);h.scale=Vector3(1.3,.62,.35)
+        var h=G.ellipsoid(visual,Vector3(side*.66,1.11,-2.28),Vector3(.275,.145,.050),chrome)
+        for offset in [-.105,.088]:
+            var lens=G.cylinder(visual,Vector3(side*.66+offset,1.11,-2.341),.084,.017,trim,32);lens.rotation.x=PI/2
+            var projector=G.cylinder(visual,Vector3(side*.66+offset,1.11,-2.353),.060,.013,head,32);projector.rotation.x=PI/2
+            var inner=G.ellipsoid(visual,Vector3(side*.66+offset,1.11,-2.365),Vector3(.037,.037,.014),chrome)
         var h2=G.ball(visual,Vector3(side*.59,.66,-2.36),.076,head);h2.scale.z=.2
         G.box(visual,Vector3(side*.72,1.13,2.34),Vector3(.27,.36,.04),brake_material)
         var spot=SpotLight3D.new();spot.position=Vector3(side*.66,1.1,-2.3);spot.light_color=Color("fff2ce");spot.light_energy=1.1;spot.spot_range=26;spot.spot_angle=32;spot.shadow_enabled=false;spot.visible=false;visual.add_child(spot);lamps.append(spot)
     for z in [-2.426,2.412]:
         G.box(visual,Vector3(0,.71,z),Vector3(.51,.115,.022),head)
         var plate=Label3D.new();plate.text="TL 2005";plate.font_size=36;plate.pixel_size=.0022;plate.modulate=Color("15222a");plate.outline_size=0;plate.position=Vector3(0,.715,z+(-.015 if z<0 else .015));plate.rotation.y=PI if z<0 else 0;visual.add_child(plate)
+    _premium_details(paint,trim,chrome)
     _extra_details(paint,trim,chrome,tyre,head)
     # Interior is visible in cockpit camera. The windshield stays transparent by
     # hiding only the glass shell when cockpit mode is selected.
@@ -164,7 +183,7 @@ func cockpit_visibility(enabled: bool) -> void:
     for n in visual.get_children():
         if n is MeshInstance3D and n.material_override is StandardMaterial3D:
             var c = n.material_override.albedo_color
-            if c.is_equal_approx(Color("416575")):n.visible=not enabled
+            if n.material_override.has_meta("glass"):n.visible=not enabled
 
 func _physics_process(dt: float) -> void:
     var old=position
@@ -246,3 +265,29 @@ func reset_to(p: Vector3, yaw: float) -> void:
     speed_kmh=0
     longitudinal=0
     visual.rotation=Vector3.ZERO
+
+func _premium_details(paint,trim,chrome) -> void:
+    var leather=G.mat(Color("8b8374"),.9)
+    for side in [-1,1]:
+        # Door cards, stitched leather panels, handles and switches.
+        G.box(visual,Vector3(side*.87,1.02,.40),Vector3(.075,.43,1.90),leather)
+        G.box(visual,Vector3(side*.815,1.12,-.02),Vector3(.085,.075,.58),trim)
+        G.box(visual,Vector3(side*.797,1.24,-.22),Vector3(.015,.035,.18),chrome)
+        for j in range(4):G.box(visual,Vector3(side*.767,1.17,-.17+j*.052),Vector3(.032,.012,.033),trim)
+        G.ellipsoid(visual,Vector3(side*.43,1.32,.53),Vector3(.235,.31,.105),leather)
+        G.ellipsoid(visual,Vector3(side*.43,1.69,.58),Vector3(.16,.115,.08),leather)
+        for j in range(6):G.tube(visual,Vector3(side*.43-.19,1.07+j*.087,.408),Vector3(side*.43+.19,1.07+j*.087,.408),.0035,trim,6)
+        for z in [-1.81,-1.62,-1.43]:G.tube(visual,Vector3(side*.56,1.256,z),Vector3(side*.57,1.272,z+.17),.008,paint)
+        G.box(visual,Vector3(side*.80,.54,-2.32),Vector3(.22,.09,.035),chrome)
+    # Vent slats, center controls, pedal box and rear seats.
+    for x in [-.70,-.16,.18,.63]:
+        G.box(visual,Vector3(x,1.43,-.45),Vector3(.17,.10,.025),chrome)
+        for j in range(4):G.box(visual,Vector3(x,1.396+j*.022,-.432),Vector3(.14,.009,.012),trim)
+    for x in [-.52,-.35]:G.box(visual,Vector3(x,.72,-.74),Vector3(.09,.025,.16),trim)
+    G.box(visual,Vector3(0,1.00,1.24),Vector3(1.31,.18,.45),leather)
+    G.box(visual,Vector3(0,1.34,1.49),Vector3(1.31,.59,.15),leather)
+    for x in [-.45,0,.45]:G.ellipsoid(visual,Vector3(x,1.69,1.50),Vector3(.14,.10,.06),leather)
+    for x in [-.62,.62]:
+        G.tube(visual,Vector3(x,1.81,.17),Vector3(x*.6,.98,.37),.016,trim,10)
+    for x in [-.3,0,.3]:
+        for y in [.59,.65,.71]:G.box(visual,Vector3(x,y,-2.413),Vector3(.24,.025,.018),trim)

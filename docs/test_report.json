@@ -143,6 +143,58 @@
     {
       "check": "House numbers are retained from OSM for address labels",
       "pass": true
+    },
+    {
+      "check": "Light population creates 8 cars and 12 pedestrians",
+      "pass": true
+    },
+    {
+      "check": "Traffic contains ZAZ, Zhiguli, Moskvich and modern Lada",
+      "pass": true
+    },
+    {
+      "check": "All traffic cars have valid road routes",
+      "pass": true
+    },
+    {
+      "check": "All pedestrians have sidewalk routes",
+      "pass": true
+    },
+    {
+      "check": "Traffic cars move along their routes",
+      "pass": true
+    },
+    {
+      "check": "Pedestrians walk and animate along sidewalks",
+      "pass": true
+    },
+    {
+      "check": "Player vehicle collides with a traffic vehicle",
+      "pass": true
+    },
+    {
+      "check": "Traffic brakes for the player's car and preserves separation",
+      "pass": true
+    },
+    {
+      "check": "Population can be disabled without leftover actors",
+      "pass": true
+    },
+    {
+      "check": "Graphics preset 0 applies",
+      "pass": true
+    },
+    {
+      "check": "Graphics preset 1 applies",
+      "pass": true
+    },
+    {
+      "check": "Graphics preset 2 applies",
+      "pass": true
+    },
+    {
+      "check": "Mesh batching preserves both unindexed body panels and indexed primitive details",
+      "pass": true
     }
   ],
   "engine": "4.4.1-stable (official)",

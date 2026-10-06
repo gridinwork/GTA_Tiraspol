@@ -103,6 +103,46 @@ func run(game) -> void:
     check(absf(forward_point.x)<.001 and forward_point.y<0,"Heading-up minimap puts vehicle forward at the top")
     map.free()
     check(game.world.data.buildings.filter(func(b):return not str(b.get("housenumber","")).is_empty()).size()>250,"House numbers are retained from OSM for address labels")
+    game.set_population(1)
+    await frames(3)
+    check(game.population.cars.size()==8 and game.population.people.size()==12,"Light population creates 8 cars and 12 pedestrians")
+    var types={}
+    for actor in game.population.cars:types[actor.model_type]=true
+    check(types.size()==4,"Traffic contains ZAZ, Zhiguli, Moskvich and modern Lada")
+    check(game.population.cars.all(func(a):return not a.edge.is_empty()),"All traffic cars have valid road routes")
+    check(game.population.people.all(func(a):return not a.edge.is_empty()),"All pedestrians have sidewalk routes")
+    await frames(180)
+    var car_motion=0.0;var ped_motion=0.0
+    for actor in game.population.cars:car_motion+=actor.travelled
+    for actor in game.population.people:ped_motion+=actor.travelled
+    check(car_motion>10,"Traffic cars move along their routes")
+    check(ped_motion>5,"Pedestrians walk and animate along sidewalks")
+    game.population.set_process(false)
+    var actor=game.population.cars[0];actor.set_physics_process(false);actor.edge={};actor.position=Vector3(1100,.15,1000);actor.rotation=Vector3.ZERO
+    game.car.set_physics_process(false);game.car.position=Vector3(1100,.15,1007);game.car.rotation=Vector3.ZERO
+    await frames(2)
+    var traffic_hit=game.car.move_and_collide(Vector3(0,0,-10))
+    check(traffic_hit!=null and traffic_hit.get_collider()==actor,"Player vehicle collides with a traffic vehicle")
+    actor.edge={"a":"test_a","b":"test_b","start":Vector3(1100,.15,1100),"end":Vector3(1100,.15,900),"width":8.0}
+    actor.position=game.population.edge_point(actor.edge,.5,false);actor.rotation=Vector3.ZERO
+    game.car.position=actor.position+Vector3(0,0,-6);game.car.velocity=Vector3.ZERO
+    actor.speed=2;actor.set_physics_process(true)
+    await frames(90)
+    check(actor.speed<.1 and actor.position.distance_to(game.car.position)>3.5,"Traffic brakes for the player's car and preserves separation")
+    game.car.set_physics_process(true);game.reset_start()
+    game.set_population(0);game.population.set_process(true);await frames(2)
+    check(game.population.cars.is_empty() and game.population.people.is_empty(),"Population can be disabled without leftover actors")
+    for preset in range(3):game.set_quality(preset);check(game.quality==preset,"Graphics preset "+str(preset)+" applies")
+    game.set_quality(0)
+    var geo=preload("res://scripts/geo.gd")
+    var group=Node3D.new();game.add_child(group);var material=geo.mat(Color.WHITE)
+    var surface=geo.surface();geo.tri(surface,Vector3.ZERO,Vector3.RIGHT,Vector3.UP,Vector3.FORWARD)
+    geo.mesh_node(group,surface,material);geo.box(group,Vector3.ZERO,Vector3.ONE,material)
+    geo.merge_static_children(group)
+    var faces=0
+    for child in group.get_children():faces+=child.mesh.get_faces().size()/3
+    check(faces==13,"Mesh batching preserves both unindexed body panels and indexed primitive details")
+    group.queue_free()
     var report={"engine":Engine.get_version_info().string,"checks":checks,"failures":failures,"platform":OS.get_name(),"note":"Automated functional checks; not a Windows or UHD 620 benchmark."}
     var args=OS.get_cmdline_user_args();var output="user://test_report.json";var idx=args.find("--test")
     if idx>=0 and args.size()>idx+1:output=args[idx+1]

@@ -56,14 +56,15 @@ func show_main_menu() -> void:
     _label("Стрелки / WASD — движение    Enter — сесть / выйти",14,Color("b9c8c9"))
     _label("Пробел — ручник / прыжок    C — камера    Tab — карта",14,Color("b9c8c9"))
     _label("Мышь — обзор    Shift — бег    R — вернуть на дорогу",14,Color("b9c8c9"))
-    _label("0.2 · 409 зданий · 0,62 км² · без прохожих и трафика",13,Color("859b9e"))
+    _label("0.3 · 409 зданий · пешеходы и 4 типа машин",13,Color("859b9e"))
     start.grab_focus()
 
 func show_settings() -> void:
     settings_page=true;_clear_menu()
     _label("НАСТРОЙКИ",29)
     _label("Профиль для Intel UHD 620",14,accent)
-    _button("Графика: "+("низкая" if main.quality==0 else "средняя"),func():main.set_quality(1-main.quality);show_settings())
+    _button("Графика: "+["низкая","средняя","высокая"][main.quality],func():main.set_quality((main.quality+1)%3);show_settings())
+    _button("Город: "+["пустой","8 машин / 12 пешеходов","16 машин / 24 пешехода"][main.population_density],func():main.set_population((main.population_density+1)%3);show_settings())
     var res=OptionButton.new();res.add_item("1280 × 720 — рекомендуется");res.add_item("1600 × 900");res.add_item("1920 × 1080");res.selected=main.resolution_index;res.custom_minimum_size.y=36;menu.add_child(res)
     res.item_selected.connect(func(i):main.change_resolution(i))
     _button("Полный экран / окно · F11",func():main.toggle_fullscreen())
@@ -107,7 +108,7 @@ func _draw() -> void:
     draw_rect(Rect2(24,22,3,72),accent)
     _text(Vector2(40,49),"TIRASPOL  /  БАЛКА",21)
     _text(Vector2(40,77),main.street_name,14,Color("a9c0c5"))
-    _text(Vector2(s.x-190,39),str(Engine.get_frames_per_second())+" FPS  /  "+("НИЗКИЕ" if main.quality==0 else "СРЕДНИЕ"),13,Color("d7e0db"))
+    _text(Vector2(s.x-190,39),str(Engine.get_frames_per_second())+" FPS  /  "+["НИЗКИЕ","СРЕДНИЕ","ВЫСОКИЕ"][main.quality],13,Color("d7e0db"))
     _text(Vector2(26,s.y-225),"КАРТА   [TAB]",12,accent)
     _text(Vector2(26,s.y-15),"© OpenStreetMap contributors",10,Color("a2b4b1"))
     if main.driving:

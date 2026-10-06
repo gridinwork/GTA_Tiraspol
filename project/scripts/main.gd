@@ -21,6 +21,8 @@ var quality=0
 var volume=.65
 var resolution_index=0
 var waypoint=Vector2.INF
+var population
+var population_density=1
 var testing=false
 var capturing=false
 var cfg=ConfigFile.new()
@@ -37,6 +39,7 @@ func _ready() -> void:
     var layer=CanvasLayer.new();add_child(layer)
     hud=HUD.new();hud.main=self;layer.add_child(hud)
     load_settings()
+    population=preload("res://scripts/traffic.gd").new();population.main=self;population.density=0 if testing else population_density;population.process_mode=Node.PROCESS_MODE_PAUSABLE;add_child(population)
     reset_start()
     _update_camera(1.0,true)
     if testing or capturing:
@@ -79,7 +82,7 @@ func _unhandled_input(event: InputEvent) -> void:
         if event.is_action_pressed("horn") and driving:car.horn.play()
         if event.physical_keycode==KEY_F5:save_game();notify("Позиция сохранена")
         if event.physical_keycode==KEY_F9:load_game()
-        if event.physical_keycode==KEY_F2:set_quality(1-quality);notify("Графика: "+("низкая" if quality==0 else "средняя"))
+        if event.physical_keycode==KEY_F2:set_quality((quality+1)%3);notify("Графика: "+("низкая" if quality==0 else "средняя"))
 
 func _process(dt: float) -> void:
     if get_tree().paused:return
@@ -193,9 +196,9 @@ func notify(textv: String) -> void:
     if hud:hud.notify(textv)
 
 func set_quality(value: int) -> void:
-    quality=value
-    world.sun.shadow_enabled=quality==1
-    get_viewport().msaa_3d=Viewport.MSAA_DISABLED if quality==0 else Viewport.MSAA_2X
+    quality=clampi(value,0,2)
+    world.sun.shadow_enabled=quality>=1
+    get_viewport().msaa_3d=Viewport.MSAA_DISABLED if quality==0 else (Viewport.MSAA_4X if quality==2 else Viewport.MSAA_2X)
     world.environment.fog_density=.0016 if quality==0 else .00105
     camera.far=720 if quality==0 else 900
     save_settings()
@@ -219,12 +222,14 @@ func set_volume(value: float) -> void:
 func load_settings() -> void:
     cfg.load("user://settings.cfg")
     quality=int(cfg.get_value("graphics","quality",0));resolution_index=int(cfg.get_value("graphics","resolution",0))
+    population_density=int(cfg.get_value("world","population",1))
     volume=float(cfg.get_value("audio","volume",.65));car.grip=float(cfg.get_value("car","grip",1.0));car.inertia=float(cfg.get_value("car","inertia",1.0))
     set_quality(quality);set_volume(volume)
     if not testing and not capturing:change_resolution(clampi(resolution_index,0,2))
 
 func save_settings() -> void:
     if testing or capturing:return
+    cfg.set_value("world","population",population_density)
     cfg.set_value("graphics","quality",quality);cfg.set_value("graphics","resolution",resolution_index)
     cfg.set_value("audio","volume",volume);cfg.set_value("car","grip",car.grip);cfg.set_value("car","inertia",car.inertia)
     cfg.save("user://settings.cfg")
@@ -277,7 +282,8 @@ func _capture() -> void:
     await RenderingServer.frame_post_draw
     get_viewport().get_texture().get_image().save_png(path+"_addresses.png")
     toggle_map();car.cockpit_visibility(false);set_process(false);get_tree().paused=true
-    camera.position=car.position+Vector3(-4.5,2.9,-6.5).rotated(Vector3.UP,car.rotation.y)
+    set_quality(2);hud.visible=false
+    camera.position=car.position+Vector3(-4.5,1.9,-6.5).rotated(Vector3.UP,car.rotation.y)
     camera.look_at(car.position+Vector3(0,1.1,0))
     for step in range(5):await get_tree().process_frame
     await RenderingServer.frame_post_draw
@@ -286,5 +292,19 @@ func _capture() -> void:
     for step in range(5):await get_tree().process_frame
     await RenderingServer.frame_post_draw
     get_viewport().get_texture().get_image().save_png(path+"_ternopol.png")
+    var stage=Node3D.new();add_child(stage);stage.position=Vector3(0,.10,1450)
+    for index in range(4):
+        var display_car=Node3D.new();stage.add_child(display_car);display_car.position.x=(index-1.5)*5.1
+        preload("res://scripts/traffic_model.gd").build(display_car,index,[Color("c0a66c"),Color("872e2b"),Color("487b86"),Color("a6adb2")][index])
+        var label=preload("res://scripts/geo.gd").label3(stage,preload("res://scripts/traffic_model.gd").TYPES[index],Vector3((index-1.5)*5.1,2.6,0),24);label.font=load("res://assets/DejaVuSans.ttf");label.pixel_size=.012
+    camera.position=Vector3(-8,7,1431);camera.look_at(Vector3(0,1,1450))
+    for step in range(5):await get_tree().process_frame
+    await RenderingServer.frame_post_draw
+    get_viewport().get_texture().get_image().save_png(path+"_traffic.png")
     print("CAPTURES_OK ",path)
     get_tree().call_deferred("quit")
+
+func set_population(value:int) -> void:
+    population_density=clampi(value,0,2)
+    if population:population.set_density(population_density)
+    save_settings()

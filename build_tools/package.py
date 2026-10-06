@@ -4,7 +4,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import hashlib
 root = Path(__file__).resolve().parents[1]
 out = root / 'release'; out.mkdir(exist_ok=True)
-archive = out / 'GTA_Tiraspol_Windows_v0.2.0.zip'
+archive = out / 'GTA_Tiraspol_Windows_v0.3.0.zip'
 files = ['GTA_Tiraspol.exe', 'GTA_Tiraspol.pck', 'Touareg.ico', 'Create_Desktop_Shortcut.vbs', 'README.md', 'LICENSE']
 with ZipFile(archive, 'w', ZIP_DEFLATED, compresslevel=9) as z:
     for name in files:

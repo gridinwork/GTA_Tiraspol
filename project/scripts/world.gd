@@ -23,6 +23,7 @@ func _ready() -> void:
     _lighting()
     _ground()
     _materials()
+    _surface_materials()
     _streets()
     _buildings()
     _trees()
@@ -45,7 +46,7 @@ func _lighting() -> void:
     environment.sky = sky
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     environment.ambient_light_color = Color("bed1df")
-    environment.ambient_light_energy = 0.6
+    environment.ambient_light_energy = 0.43
     environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
     environment.fog_enabled = true
     environment.fog_light_color = Color("b4c7c8")
@@ -55,7 +56,7 @@ func _lighting() -> void:
     sun = DirectionalLight3D.new()
     sun.rotation_degrees = Vector3(-47,-32,0)
     sun.light_color = Color("fff0d5")
-    sun.light_energy = 1.45
+    sun.light_energy = 1.15
     sun.shadow_enabled = false
     sun.directional_shadow_max_distance = 100
     add_child(sun)
@@ -220,7 +221,7 @@ func _details() -> void:
 func _finish_batches() -> void:
     for key in batches:
         var b = batches[key]
-        var n = G.mesh_node(self,b.s,materials[b.kind],180 if b.kind in ["detail","dark","concrete","blue","red"] else (650 if str(b.kind).begins_with("wall") else 800))
+        var n = G.mesh_node(self,b.s,materials[b.kind],180 if (b.kind in ["detail","dark","concrete","blue","red"] or str(b.kind).begins_with("window")) else (650 if str(b.kind).begins_with("wall") else 800))
         n.name = str(key).replace(":","_")
         if str(b.kind).begins_with("wall") or b.kind in ["shop","garage"]:
             var body=StaticBody3D.new();var shape=CollisionShape3D.new()
@@ -259,6 +260,9 @@ func _facade_details() -> void:
         var poly=PackedVector2Array()
         for p in b.polygon:poly.append(Vector2(p[0],p[1]))
         var h=float(b.height);var levels=int(b.levels)
+        var center=b.get("center",b.polygon[0])
+        if levels>=3:
+            for vent in range(3):_detail_box(Vector3(center[0]+vent*2,h+.45,center[1]),Vector3(.8,.9,.65),"concrete")
         var is_store=b.name=="Тернополь"
         var sign_added=false
         for i in range(poly.size()):
@@ -274,6 +278,8 @@ func _facade_details() -> void:
             if is_store:
                 for spec in [[2.8,.75,"blue"],[2.28,.18,"red"],[h-.38,.25,"blue"]]:
                     _detail_box(base+along*length/2+n*.12+Vector3.UP*spec[0],Vector3(length,spec[1],.24),spec[2],yaw)
+            for floor_index in range(1,levels):_detail_box(base+along*length/2+n*.025+Vector3.UP*(floor_index*h/levels),Vector3(length,.04,.055),"concrete",yaw)
+            _detail_box(base+along*.4+n*.12+Vector3.UP*h/2,Vector3(.12,h,.12),"concrete",yaw)
             var bays=int(length/3.1)
             for j in range(bays):
                 var p=base+along*((j+.5)*length/bays)+n*.09
@@ -282,9 +288,11 @@ func _facade_details() -> void:
                     var width=2.6 if is_store else 1.48
                     var wh=1.9 if is_store else 1.46
                     _detail_box(p+Vector3.UP*y,Vector3(width+.18,wh+.18,.15),"detail",yaw)
-                    _detail_box(p+n*.10+Vector3.UP*y,Vector3(width,wh,.12),"dark",yaw)
+                    _detail_box(p+n*.10+Vector3.UP*y,Vector3(width,wh,.12),"window"+str((int(b.id)+j+floor_i)%4),yaw)
                     _detail_box(p+n*.18+Vector3.UP*y,Vector3(.055,wh,.06),"detail",yaw)
                     _detail_box(p+n*.20+Vector3.UP*(y-wh/2),Vector3(width+.25,.10,.35),"detail",yaw)
+                    if not is_store and (j+floor_i+int(b.id))%9==0:
+                        _detail_box(p+along*.9+n*.37+Vector3.UP*(y-.2),Vector3(.63,.47,.50),"detail",yaw)
                     if not is_store and levels>=3 and j%3==1 and floor_i>0:
                         _detail_box(p+n*.59+Vector3.UP*(y-.77),Vector3(2.3,.15,1.1),"concrete",yaw)
                         _detail_box(p+n*1.08+Vector3.UP*(y-.3),Vector3(2.3,.86,.09),"detail",yaw)
@@ -302,3 +310,15 @@ func _facade_details() -> void:
             var a=poly[0];var z=poly[1];var mid=(a+z)/2;var dir=(z-a).normalized();var n=Vector2(dir.y,-dir.x)
             if Geometry2D.is_point_in_polygon(mid+n*.2,poly):n=-n
             var plaque=Label3D.new();plaque.font=load("res://assets/DejaVuSans.ttf");plaque.text=addr;plaque.font_size=40;plaque.pixel_size=.008;plaque.position=Vector3(mid.x+n.x*.28,2.6,mid.y+n.y*.28);plaque.rotation.y=atan2(n.x,n.y);plaque.visibility_range_end=45;plaque.outline_size=5;add_child(plaque)
+
+func _surface_materials() -> void:
+    for kind in ["asphalt","sidewalk","wall0","wall1","wall2","wall3","wall4","wall5","concrete","roof"]:
+        var original=materials[kind]
+        var m=ShaderMaterial.new();m.shader=load("res://materials/surface.gdshader")
+        m.set_shader_parameter("base_color",original.albedo_color)
+        m.set_shader_parameter("scale",34.0 if kind=="asphalt" else 12.0)
+        m.set_shader_parameter("variation",.25 if kind=="asphalt" else .12)
+        materials[kind]=m
+    for i in range(4):
+        var glass=G.mat([Color("263c48"),Color("4c615e"),Color("746e58"),Color("303e50")][i],.23)
+        glass.metallic=.32;materials["window"+str(i)]=glass

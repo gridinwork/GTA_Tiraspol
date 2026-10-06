@@ -11,7 +11,7 @@ var test_direction=Vector2.ZERO
 var test_control=false
 
 func _ready() -> void:
-    collision_layer=4;collision_mask=3
+    collision_layer=4;collision_mask=11
     floor_snap_length=.4
     var col=CollisionShape3D.new();var cap=CapsuleShape3D.new();cap.radius=.3;cap.height=1.75;col.shape=cap;col.position.y=.91;add_child(col)
     visual=Node3D.new();add_child(visual)
