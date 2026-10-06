@@ -272,5 +272,19 @@ func _capture() -> void:
     for step in range(5):await get_tree().process_frame
     await RenderingServer.frame_post_draw
     get_viewport().get_texture().get_image().save_png(path+"_map.png")
+    hud.bigmap.zoom=3.2;hud.bigmap.pan=Vector2(300,90)
+    for step in range(5):await get_tree().process_frame
+    await RenderingServer.frame_post_draw
+    get_viewport().get_texture().get_image().save_png(path+"_addresses.png")
+    toggle_map();car.cockpit_visibility(false);set_process(false);get_tree().paused=true
+    camera.position=car.position+Vector3(-4.5,2.9,-6.5).rotated(Vector3.UP,car.rotation.y)
+    camera.look_at(car.position+Vector3(0,1.1,0))
+    for step in range(5):await get_tree().process_frame
+    await RenderingServer.frame_post_draw
+    get_viewport().get_texture().get_image().save_png(path+"_car.png")
+    camera.position=car.position+Vector3(0,10,0);camera.look_at(Vector3(-60,3,18))
+    for step in range(5):await get_tree().process_frame
+    await RenderingServer.frame_post_draw
+    get_viewport().get_texture().get_image().save_png(path+"_ternopol.png")
     print("CAPTURES_OK ",path)
-    get_tree().quit()
+    get_tree().call_deferred("quit")

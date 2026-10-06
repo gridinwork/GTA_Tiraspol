@@ -70,9 +70,42 @@ func run(game) -> void:
     game.resume_game();check(not get_tree().paused and not game.hud.panel.visible,"Resume returns to the game")
     game.toggle_map();check(get_tree().paused and game.hud.bigmap.visible,"Map opens and pauses game")
     game.toggle_map();check(not get_tree().paused,"Closing map resumes game")
+    # Regression checks for the requested driving, map and obstacle changes.
+    var probe=preload("res://scripts/car.gd").new();game.add_child(probe)
+    probe.position=Vector3(1200,10,1000);probe.collision_mask=0
+    probe.test_control=true;probe.test_throttle=1
+    await frames(180)
+    check(probe.speed_kmh>22 and probe.speed_kmh<33,"Gentler acceleration: 22–33 km/h after three seconds")
+    await frames(480)
+    check(probe.speed_kmh>59 and probe.speed_kmh<=60.001,"Physical forward speed is capped at 60 km/h")
+    probe.test_steer=1;probe.test_brake=true
+    await frames(25)
+    check(probe.speed_kmh<=60.001,"Drift lateral velocity also respects the speed cap")
+    probe.queue_free()
+    check(game.world.tree_bodies.size()==game.world.data.trees.size(),"Every visible tree has a solid trunk collider")
+    game.car.set_physics_process(false)
+    var tree=game.world.tree_bodies[0]
+    game.car.position=tree.position+Vector3(0,.10,5);game.car.rotation=Vector3.ZERO
+    var hit=game.car.move_and_collide(Vector3(0,0,-8))
+    check(hit!=null and hit.get_collider().has_meta("solid_tree"),"Vehicle sweep is blocked by a tree trunk")
+    var lamp=preload("res://scripts/pole.gd").new();game.add_child(lamp);lamp.position=Vector3(1100,0,900)
+    await frames(2)
+    game.car.position=lamp.position+Vector3(0,.10,5)
+    var pole_hit=game.car.move_and_collide(Vector3(0,0,-8))
+    check(pole_hit!=null and pole_hit.get_collider()==lamp,"Lamp post collision is detected by the car")
+    lamp.vehicle_hit(Vector3(0,0,-3));await frames(35)
+    check(lamp.state=="bent" and lamp.angle>.2 and not lamp.upper_shape.disabled,"Low speed impact bends the pole and keeps its collider")
+    lamp.vehicle_hit(Vector3(0,0,-10));await frames(65)
+    check(lamp.state=="broken" and lamp.angle>1.4 and lamp.upper_shape.disabled,"Strong impact breaks the pole and clears the driving path")
+    lamp.queue_free();game.car.set_physics_process(true);game.reset_start()
+    var map=preload("res://scripts/map.gd").new();map.size=Vector2(200,200);map.center=Vector2.ZERO;map.factor=1;map.heading=PI/2
+    var forward_point=map._point(Vector2(-10,0))-map.size/2
+    check(absf(forward_point.x)<.001 and forward_point.y<0,"Heading-up minimap puts vehicle forward at the top")
+    map.free()
+    check(game.world.data.buildings.filter(func(b):return not str(b.get("housenumber","")).is_empty()).size()>250,"House numbers are retained from OSM for address labels")
     var report={"engine":Engine.get_version_info().string,"checks":checks,"failures":failures,"platform":OS.get_name(),"note":"Automated functional checks; not a Windows or UHD 620 benchmark."}
     var args=OS.get_cmdline_user_args();var output="user://test_report.json";var idx=args.find("--test")
     if idx>=0 and args.size()>idx+1:output=args[idx+1]
     var f=FileAccess.open(output,FileAccess.WRITE);f.store_string(JSON.stringify(report,"  "));f.close()
     print("TEST_RESULT ",checks.size()-failures.size(),"/",checks.size()," ",output)
-    get_tree().quit(0 if failures.is_empty() else 1)
+    get_tree().call_deferred("quit",0 if failures.is_empty() else 1)

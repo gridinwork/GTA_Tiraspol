@@ -103,6 +103,46 @@
     {
       "check": "Closing map resumes game",
       "pass": true
+    },
+    {
+      "check": "Gentler acceleration: 22–33 km/h after three seconds",
+      "pass": true
+    },
+    {
+      "check": "Physical forward speed is capped at 60 km/h",
+      "pass": true
+    },
+    {
+      "check": "Drift lateral velocity also respects the speed cap",
+      "pass": true
+    },
+    {
+      "check": "Every visible tree has a solid trunk collider",
+      "pass": true
+    },
+    {
+      "check": "Vehicle sweep is blocked by a tree trunk",
+      "pass": true
+    },
+    {
+      "check": "Lamp post collision is detected by the car",
+      "pass": true
+    },
+    {
+      "check": "Low speed impact bends the pole and keeps its collider",
+      "pass": true
+    },
+    {
+      "check": "Strong impact breaks the pole and clears the driving path",
+      "pass": true
+    },
+    {
+      "check": "Heading-up minimap puts vehicle forward at the top",
+      "pass": true
+    },
+    {
+      "check": "House numbers are retained from OSM for address labels",
+      "pass": true
     }
   ],
   "engine": "4.4.1-stable (official)",

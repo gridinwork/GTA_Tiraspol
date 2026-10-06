@@ -56,7 +56,7 @@ func show_main_menu() -> void:
     _label("Стрелки / WASD — движение    Enter — сесть / выйти",14,Color("b9c8c9"))
     _label("Пробел — ручник / прыжок    C — камера    Tab — карта",14,Color("b9c8c9"))
     _label("Мышь — обзор    Shift — бег    R — вернуть на дорогу",14,Color("b9c8c9"))
-    _label("0.1 · 409 зданий · 0,62 км² · без прохожих и трафика",13,Color("859b9e"))
+    _label("0.2 · 409 зданий · 0,62 км² · без прохожих и трафика",13,Color("859b9e"))
     start.grab_focus()
 
 func show_settings() -> void:
@@ -118,7 +118,7 @@ func _draw() -> void:
         _text(Vector2(x+127,y+79),"км/ч",15,accent)
         var gear="R" if main.car.longitudinal < -.4 else ("N" if main.car.speed_kmh<1 else str(clampi(1+int(main.car.speed_kmh/22),1,5)))
         _text(Vector2(x+175,y+79),gear,25)
-        var ratio=clampf(main.car.speed_kmh/112,0,1)
+        var ratio=clampf(main.car.speed_kmh/60,0,1)
         draw_rect(Rect2(x+16,y+98,180,3),Color("405257"));draw_rect(Rect2(x+16,y+98,180*ratio,3),accent)
         _text(Vector2(x,y-12),main.camera_names[main.camera_mode]+"  [C]",12,Color("e1e6df"))
     else:

@@ -41,8 +41,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v0.1.0 >/dev/null 2>&1; then
-            gh release upload v0.1.0 release/* --clobber
+          if gh release view v0.2.0 >/dev/null 2>&1; then
+            gh release upload v0.2.0 release/* --clobber
           else
-            gh release create v0.1.0 release/* --target "$GITHUB_SHA" --title "GTA Tiraspol v0.1 — Балка" --prerelease --notes "Первый Windows-прототип: ходьба, вождение, карта района Балка. Распакуйте весь ZIP и запустите GTA_Tiraspol.exe. Для ярлыка с Touareg запустите Create_Desktop_Shortcut.vbs. Инструкция и исходники включены."
+            gh release create v0.2.0 release/* --target "$GITHUB_SHA" --title "GTA Tiraspol v0.2 — Балка" --prerelease --notes "Обновление: миникарта по курсу, 60 км/ч, повреждаемые столбы, твёрдые деревья, адреса и детализация. Распакуйте весь ZIP и запустите GTA_Tiraspol.exe. Для ярлыка с Touareg запустите Create_Desktop_Shortcut.vbs. Инструкция и исходники включены."
           fi

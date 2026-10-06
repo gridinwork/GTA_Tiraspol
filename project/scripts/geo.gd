@@ -82,3 +82,27 @@ static func label3(parent: Node3D, title: String, pos: Vector3, size: int = 40) 
     l.visibility_range_end = 160
     parent.add_child(l)
     return l
+
+static func tube(parent:Node3D,a:Vector3,b:Vector3,radius:float,material:Material,vertices:int=16) -> MeshInstance3D:
+    var node=cylinder(parent,(a+b)/2,radius,a.distance_to(b),material,vertices)
+    var up=(b-a).normalized()
+    var seed=Vector3.RIGHT if absf(up.dot(Vector3.RIGHT))<.9 else Vector3.FORWARD
+    var z=seed.cross(up).normalized();var x=up.cross(z).normalized()
+    node.basis=Basis(x,up,z)
+    return node
+
+static func ellipsoid(parent:Node3D,pos:Vector3,scale3:Vector3,material:Material) -> MeshInstance3D:
+    var node=ball(parent,pos,1,material);node.scale=scale3
+    node.mesh.radial_segments=24;node.mesh.rings=12
+    return node
+
+static func merge_static_children(parent:Node3D) -> void:
+    # Combine static model pieces by material; animated pivots remain separate.
+    var groups={}
+    for n in parent.get_children():
+        if not n is MeshInstance3D or not n.material_override:continue
+        var key=n.material_override.get_instance_id()
+        if not groups.has(key):groups[key]={"surface":surface(),"material":n.material_override}
+        groups[key].surface.append_from(n.mesh,0,n.transform)
+        parent.remove_child(n);n.queue_free()
+    for group in groups.values():mesh_node(parent,group.surface,group.material)

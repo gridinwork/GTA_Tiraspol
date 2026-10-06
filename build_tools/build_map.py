@@ -67,7 +67,7 @@ for w in root.findall('way'):
         if len(name)>45:name=''
         typ='apartments' if levels>=3 else ('commercial' if name or t.get('shop') else 'house')
         if t.get('building') in ['garage','garages','shed']:typ='garage'
-        item={'id':wid,'polygon':rounded(list(poly.exterior.coords)[:-1]),'height':round(height,1),'levels':levels,'levels_known':known,'style':typ,'variant':rng.randrange(6),'name':name,'address':t.get('addr:street','')+' '+t.get('addr:housenumber','')}
+        item={'id':wid,'polygon':rounded(list(poly.exterior.coords)[:-1]),'height':round(height,1),'levels':levels,'levels_known':known,'style':typ,'variant':rng.randrange(6),'name':name,'street':t.get('addr:street',''),'housenumber':t.get('addr:housenumber',''),'center':[round(poly.centroid.x,2),round(poly.centroid.y,2)],'address':(t.get('addr:street','')+' '+t.get('addr:housenumber','')).strip(),'reference_status':'facade_reference_reviewed' if wid==136387817 else 'needs_photos'}
         buildings.append(item)
         if name in ['Тернополь','Причерноморье','Маяк']:
             landmarks.append({'name':name,'position':[round(poly.centroid.x,2),round(poly.centroid.y,2)],'height':height,'building_id':wid})
@@ -87,7 +87,7 @@ for _ in range(5500):
         if len(trees)>=640:break
 # Spawn on the northbound Krasnodonskaya carriageway, beside Ternopol.
 spawn=project(29.665858,46.835755)
-result={'title':'Тирасполь · Балка','version':'0.1.0','origin':{'latitude':LAT0,'longitude':LON0},'metres_per_unit':1,'boundary':rounded(boundary),'bounds':[round(x,2) for x in visual.bounds],'spawn':{'car':[round(spawn[0],2),.3,round(spawn[1],2)],'yaw':-0.64},'roads':roads,'buildings':buildings,'landmarks':landmarks,'greens':greens,'parkings':parkings,'trees':trees,'source':'© OpenStreetMap contributors, ODbL 1.0','alignment':'Approximate alignment to user-drawn screenshot; not a survey. Heights without OSM levels are estimated.'}
+result={'title':'Тирасполь · Балка','version':'0.2.0','origin':{'latitude':LAT0,'longitude':LON0},'metres_per_unit':1,'boundary':rounded(boundary),'bounds':[round(x,2) for x in visual.bounds],'spawn':{'car':[round(spawn[0],2),.3,round(spawn[1],2)],'yaw':-0.64},'roads':roads,'buildings':buildings,'landmarks':landmarks,'greens':greens,'parkings':parkings,'trees':trees,'source':'© OpenStreetMap contributors, ODbL 1.0','alignment':'Approximate alignment to user-drawn screenshot; not a survey. Heights without OSM levels are estimated.'}
 OUT.mkdir(parents=True,exist_ok=True)
 (OUT/'district.json').write_text(json.dumps(result,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
 print(f'{len(roads)} street/path sections, {len(buildings)} buildings, {len(trees)} trees, {area.area/1e6:.3f} km2')

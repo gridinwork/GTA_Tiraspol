@@ -10,6 +10,8 @@ var batches = {}
 var materials = {}
 var spawn_pos = Vector3.ZERO
 var spawn_yaw = 0.0
+var tree_bodies:Array=[]
+var poles:Array=[]
 
 func _ready() -> void:
     data = JSON.parse_string(FileAccess.get_file_as_string("res://data/district.json"))
@@ -25,6 +27,7 @@ func _ready() -> void:
     _buildings()
     _trees()
     _details()
+    _facade_details()
     _finish_batches()
 
 func _lighting() -> void:
@@ -81,13 +84,18 @@ func _materials() -> void:
     var colors = ["d9ccb7","c0c6c3","d3bdad","c5c6b3","b0bfbd","d9d3bf"]
     for i in range(colors.size()):
         var m = G.mat(Color(colors[i]))
-        m.albedo_texture = load("res://assets/facade.png")
+        # Windows are actual facade geometry in v0.2; keep plaster untextured.
         m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
         materials["wall"+str(i)] = m
-    var m2 = G.mat(Color("e8d5b1"))
-    m2.albedo_texture = load("res://assets/shop.png")
+    var m2 = G.mat(Color("e5e6df"))
+    # Shop windows and sign bands are modelled separately.
     materials.shop = m2
     materials.garage = G.mat(Color("b1aa99"))
+    materials.detail=G.mat(Color("d4d5cd"))
+    materials.dark=G.mat(Color("263c48"),.26)
+    materials.blue=G.mat(Color("1c4374"))
+    materials.red=G.mat(Color("b42d33"))
+    materials.concrete=G.mat(Color("94948a"))
 
 func _batch(kind: String, pos: Vector3) -> SurfaceTool:
     var key = kind+":"+str(int(floor(pos.x/120)))+":"+str(int(floor(pos.z/120)))
@@ -165,13 +173,17 @@ func _buildings() -> void:
             var landmark = null
             for l in data.landmarks:
                 if l.name==b.name:landmark=l
-            if landmark:
+            if landmark and b.name!="Тернополь":
                 G.label3(self,b.name.to_upper(),Vector3(landmark.position[0],height+2.6,landmark.position[1]),50)
 
 func _trees() -> void:
+    for t in data.trees:
+        var body=StaticBody3D.new();body.set_meta("solid_tree",true)
+        var col=CollisionShape3D.new();var shape=CylinderShape3D.new();shape.radius=.24;shape.height=3.6
+        col.shape=shape;col.position.y=1.8;body.position=Vector3(t[0],0,t[1]);body.add_child(col);add_child(body);tree_bodies.append(body)
     # A handful of MultiMeshes for the entire district.
     var trunk = CylinderMesh.new();trunk.bottom_radius=.20;trunk.top_radius=.13;trunk.height=1;trunk.radial_segments=6;trunk.rings=1
-    var canopy = SphereMesh.new();canopy.radius=1;canopy.height=2;canopy.radial_segments=8;canopy.rings=3
+    var canopy = SphereMesh.new();canopy.radius=1;canopy.height=2;canopy.radial_segments=16;canopy.rings=8
     for group in range(4):
         var list: Array = data.trees if group==0 else data.trees.filter(func(t):return int(t[3])==group-1)
         var mm = MultiMesh.new();mm.transform_format=MultiMesh.TRANSFORM_3D;mm.mesh=trunk if group==0 else canopy
@@ -201,22 +213,14 @@ func _details() -> void:
             while at<length:
                 var p = a+d*at+side
                 if contains(p):
-                    var pole = G.cylinder(self,p+Vector3.UP*3.1,.07,6.2,postmat,6)
-                    pole.visibility_range_end=180
-                    var lamp=G.box(self,p+Vector3.UP*6.2-d*.45,Vector3(.3,.14,1),materials.line);lamp.rotation.y=atan2(d.x,d.z);lamp.visibility_range_end=180
+                    var pole=preload("res://scripts/pole.gd").new();pole.position=p;pole.rotation.y=atan2(d.x,d.z);add_child(pole);poles.append(pole)
                 at+=60
             travelled=fmod(travelled+length,60)
-    # Small arrival marker at the starting point, visible in the map as well.
-    for l in data.landmarks:
-        var p = Vector3(l.position[0],0,l.position[1])
-        if l.name=="Тернополь":
-            var sign=G.box(self,p+Vector3(0,l.height+.55,0),Vector3(12,1.1,.35),materials.yellow)
-            sign.rotation.y=-.64
 
 func _finish_batches() -> void:
     for key in batches:
         var b = batches[key]
-        var n = G.mesh_node(self,b.s,materials[b.kind],650 if str(b.kind).begins_with("wall") else 800)
+        var n = G.mesh_node(self,b.s,materials[b.kind],180 if b.kind in ["detail","dark","concrete","blue","red"] else (650 if str(b.kind).begins_with("wall") else 800))
         n.name = str(key).replace(":","_")
         if str(b.kind).begins_with("wall") or b.kind in ["shop","garage"]:
             var body=StaticBody3D.new();var shape=CollisionShape3D.new()
@@ -239,3 +243,62 @@ func nearest_road(pos: Vector3) -> Dictionary:
                 var direction=(b-a).normalized()
                 answer={"point":Vector3(q.x,.3,q.y),"yaw":atan2(-direction.x,-direction.y),"distance":sqrt(dist),"name":road.name,"width":road.width}
     return answer
+
+func _detail_box(pos:Vector3,sz:Vector3,kind:String,yaw:float=0) -> void:
+    var t=Transform3D(Basis(Vector3.UP,yaw),pos)
+    var p=[]
+    for v in [Vector3(-1,-1,-1),Vector3(1,-1,-1),Vector3(1,1,-1),Vector3(-1,1,-1),Vector3(-1,-1,1),Vector3(1,-1,1),Vector3(1,1,1),Vector3(-1,1,1)]:p.append(t*(v*sz/2))
+    var s=_batch(kind,pos)
+    for f in [[0,1,2,3],[5,4,7,6],[4,0,3,7],[1,5,6,2],[3,2,6,7],[4,5,1,0]]:
+        var normal=(p[f[1]]-p[f[0]]).cross(p[f[2]]-p[f[0]]).normalized()
+        G.quad(s,p[f[0]],p[f[1]],p[f[2]],p[f[3]],normal)
+
+func _facade_details() -> void:
+    for b in data.buildings:
+        if b.style=="garage":continue
+        var poly=PackedVector2Array()
+        for p in b.polygon:poly.append(Vector2(p[0],p[1]))
+        var h=float(b.height);var levels=int(b.levels)
+        var is_store=b.name=="Тернополь"
+        var sign_added=false
+        for i in range(poly.size()):
+            var av=poly[i];var bv=poly[(i+1)%poly.size()]
+            var d=(bv-av).normalized();var length=av.distance_to(bv)
+            if length<5:continue
+            var normal=Vector2(d.y,-d.x)
+            if Geometry2D.is_point_in_polygon((av+bv)/2+normal*.3,poly):normal=-normal
+            var n=Vector3(normal.x,0,normal.y)
+            var base=Vector3(av.x,0,av.y);var along=Vector3(d.x,0,d.y)
+            var yaw=-atan2(d.y,d.x)
+            for y in [.32,h-.14]:_detail_box(base+along*length/2+n*.08+Vector3.UP*y,Vector3(length,.23,.22),"concrete",yaw)
+            if is_store:
+                for spec in [[2.8,.75,"blue"],[2.28,.18,"red"],[h-.38,.25,"blue"]]:
+                    _detail_box(base+along*length/2+n*.12+Vector3.UP*spec[0],Vector3(length,spec[1],.24),spec[2],yaw)
+            var bays=int(length/3.1)
+            for j in range(bays):
+                var p=base+along*((j+.5)*length/bays)+n*.09
+                for floor_i in range(levels):
+                    var y=1.55+floor_i*(h/levels)
+                    var width=2.6 if is_store else 1.48
+                    var wh=1.9 if is_store else 1.46
+                    _detail_box(p+Vector3.UP*y,Vector3(width+.18,wh+.18,.15),"detail",yaw)
+                    _detail_box(p+n*.10+Vector3.UP*y,Vector3(width,wh,.12),"dark",yaw)
+                    _detail_box(p+n*.18+Vector3.UP*y,Vector3(.055,wh,.06),"detail",yaw)
+                    _detail_box(p+n*.20+Vector3.UP*(y-wh/2),Vector3(width+.25,.10,.35),"detail",yaw)
+                    if not is_store and levels>=3 and j%3==1 and floor_i>0:
+                        _detail_box(p+n*.59+Vector3.UP*(y-.77),Vector3(2.3,.15,1.1),"concrete",yaw)
+                        _detail_box(p+n*1.08+Vector3.UP*(y-.3),Vector3(2.3,.86,.09),"detail",yaw)
+                        for side in [-1,1]:_detail_box(p+along*side*1.1+n*.60+Vector3.UP*(y-.3),Vector3(.08,.86,1),"detail",yaw)
+                if j%5==2 or (is_store and j%6==1):
+                    _detail_box(p+n*.23+Vector3.UP*.95,Vector3(1.35,1.9,.16),"dark",yaw)
+                    _detail_box(p+n*.75+Vector3.UP*2.08,Vector3(2,.14,1.7),"concrete",yaw)
+                    for stair in range(3):_detail_box(p+n*(.35+stair*.3)+Vector3.UP*(.24-stair*.07),Vector3(1.9,.12,.45),"concrete",yaw)
+            if is_store and length>25 and normal.x>.55 and not sign_added:
+                sign_added=true
+                var sign=Label3D.new();sign.text="ТЕРНОПОЛЬ";sign.font=load("res://assets/DejaVuSans.ttf");sign.font_size=96;sign.pixel_size=.028;sign.modulate=Color("18437b");sign.outline_size=0
+                sign.position=base+along*length/2+n*.25+Vector3.UP*(h+.7);sign.rotation.y=atan2(n.x,n.z);add_child(sign)
+        var addr=str(b.get("address","")).strip_edges()
+        if not addr.is_empty():
+            var a=poly[0];var z=poly[1];var mid=(a+z)/2;var dir=(z-a).normalized();var n=Vector2(dir.y,-dir.x)
+            if Geometry2D.is_point_in_polygon(mid+n*.2,poly):n=-n
+            var plaque=Label3D.new();plaque.font=load("res://assets/DejaVuSans.ttf");plaque.text=addr;plaque.font_size=40;plaque.pixel_size=.008;plaque.position=Vector3(mid.x+n.x*.28,2.6,mid.y+n.y*.28);plaque.rotation.y=atan2(n.x,n.y);plaque.visibility_range_end=45;plaque.outline_size=5;add_child(plaque)
